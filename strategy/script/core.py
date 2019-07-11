@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# encoding: utf-8
 import rospy
 import sys
 import math
@@ -62,8 +63,11 @@ class Core(Robot, StateMachine):
     elif method == "Straight":
       x, y, yaw = self.CC.StraightForward(t['ball']['dis'], t['ball']['ang'])
 
-    
-
+    elif method == "Relative":
+      x, y, yaw = self.CC.Run_point_relative(t[side]['dis'],\
+                                             t[side]['ang'],\
+                                             t['ball']['dis'],\
+                                             t['ball']['ang'])
     self.Accelerate(1,t,80)
     self.MotionCtrl(x, y, yaw)
 
@@ -90,9 +94,6 @@ class Core(Robot, StateMachine):
           yaw = t['Blue']['ang']  '''
       
       self.MotionCtrl(x, y, yaw)
-
-      
-      
 
   def on_toShoot(self, power, pos):
     self.RobotShoot(power, pos)
@@ -175,12 +176,15 @@ class Strategy(object):
 
   def Chase(self, t):
     if self.strategy_mode == "Defense":
-      return self.robot.toChase(t, self.side['opponet'], "Classic")
+      return self.robot.toChase(t, self.side['opponent'], "Classic")
     elif self.strategy_mode == "Attack":
-      return self.robot.toChase(t, self.side['opponet'], "Straight")
-      #return self.robot.toChase(t, self.side['opponet'], "Teamwork")
+      return self.robot.toChase(t, self.side['opponent'], "Straight")
+      #return self.robot.toChase(t, self.side['opponent'], "Teamwork")
+    elif self.strategy_mode == "Defense_ball":
+      return self.robot.toChase(t, self.side['opponent'], "Relative")
+
     else: 
-      return self.robot.toChase(t, self.side['opponet'], "Classic")
+      return self.robot.toChase(t, self.side['opponent'], "Classic")
 
 
 
@@ -188,11 +192,11 @@ class Strategy(object):
 
   def Attack(self, t):
     if self.strategy_mode == "Attack":
-      return self.robot.toAttack(t, self.side['opponet'],self.run,  "Cross_Over")
+      return self.robot.toAttack(t, self.side['opponent'],self.run,  "Cross_Over")
     if self.strategy_mode == "Defense":
-      self.robot.toOrbit(t, self.side['opponet'])
+      self.robot.toOrbit(t, self.side['opponent'])
     elif self.strategy_mode == "cross_over":
-      return self.robot.toAttack(t, self.side['opponet'],self.run, "Cross_Over")
+      return self.robot.toAttack(t, self.side['opponent'],self.run, "Cross_Over")
 
   
 
@@ -227,12 +231,12 @@ class Strategy(object):
             self.Chase(targets)
 
         if self.robot.is_orbit:
-          if abs(targets[self.side['opponet']]['ang']) < 10:
-            self.robot.toAttack(targets, self.side['opponet'], self.run, "Classic")
+          if abs(targets[self.side['opponent']]['ang']) < 10:
+            self.robot.toAttack(targets, self.side['opponent'], self.run, "Classic")
           elif not self.robot.CheckBallHandle():
             self.Chase(targets)
           else:
-            self.robot.toOrbit(targets, self.side['opponet'])
+            self.robot.toOrbit(targets, self.side['opponent'])
 
         if self.robot.is_attack:
           if not self.robot.CheckBallHandle():
@@ -246,10 +250,10 @@ class Strategy(object):
 
         if self.robot.is_shoot:
           if self.strategy_mode == "Defense":
-            #self.robot.toOrbit(targets, self.side['opponet'])
-            self.robot.toAttack(targets, self.side['opponet'],self.run,  "Classic")
+            #self.robot.toOrbit(targets, self.side['opponent'])
+            self.robot.toAttack(targets, self.side['opponent'],self.run,  "Classic")
           elif self.strategy_mode == "Attack":
-            self.robot.toAttack(targets, self.side['opponet'],self.run )
+            self.robot.toAttack(targets, self.side['opponent'],self.run )
       ## Run point
       if self.robot.is_point:
         self.RunStatePoint(self.game_state)
@@ -266,7 +270,7 @@ class Strategy(object):
     self.run_point  = config['run_point']
     self.side['pos']            = 'attack' 
     self.side['teamate']        = config['our_goal']
-    self.side['opponet']        = 'Yellow' if config['our_goal'] == 'Blue' else 'Blue'
+    self.side['opponent']        = 'Yellow' if config['our_goal'] == 'Blue' else 'Blue'
     self.run['x']      = config['run_x']
     self.run['y']      = config['run_y']
     self.run['yaw']    = config['run_yaw']
